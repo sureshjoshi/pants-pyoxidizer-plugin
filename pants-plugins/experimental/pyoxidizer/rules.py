@@ -21,19 +21,19 @@ from pants.core.goals.package import (
 from pants.engine.fs import CreateDigest, Digest, FileContent
 from pants.engine.rules import Get, collect_rules, rule
 from pants.engine.process import ProcessResult
-from pants.engine.target import Dependencies, DependenciesRequest, FieldSetsPerTarget, FieldSetsPerTargetRequest, Targets
+from pants.engine.target import DependenciesRequest, FieldSetsPerTarget, FieldSetsPerTargetRequest, Targets
 from pants.engine.unions import UnionRule
 from pants.util.logging import LogLevel
 
-from experimental.pyoxidizer.target_types import PyOxidizerTarget
+from experimental.pyoxidizer.target_types import PyOxidizerDependenciesField
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
 class PyOxidizerFieldSet(PackageFieldSet):
-    required_fields = (Dependencies,)
-    dependencies: Dependencies
+    required_fields = (PyOxidizerDependenciesField,)
+    dependencies: PyOxidizerDependenciesField
     output_path: OutputPathField
 
 
