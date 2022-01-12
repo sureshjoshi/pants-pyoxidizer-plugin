@@ -7,7 +7,7 @@ python_distribution(
     name="helloworld-dist",
     dependencies=[":libhelloworld"],
     wheel=True,
-    sdist=True,
+    sdist=False,
     provides=python_artifact(
         name="helloworld-dist",
         version="0.0.1",
@@ -16,5 +16,6 @@ python_distribution(
 )
 
 oxy_clean(
+    name="helloworld-bin",
     dependencies=[":helloworld-dist"]
 )

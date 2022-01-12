@@ -20,7 +20,7 @@ from pants.core.goals.package import (
 from pants.engine.fs import CreateDigest, Digest, FileContent
 from pants.engine.rules import Get, collect_rules, rule
 from pants.engine.process import ProcessResult
-from pants.engine.target import Dependencies, DependenciesRequest, Targets
+from pants.engine.target import Dependencies, DependenciesRequest, FieldSetsPerTarget, FieldSetsPerTargetRequest, Targets
 from pants.engine.unions import UnionRule
 from pants.util.logging import LogLevel
 
@@ -38,20 +38,34 @@ class PyOxidizerFieldSet(PackageFieldSet):
 @rule(level=LogLevel.DEBUG)
 async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPackage:
     targets = await Get(Targets, DependenciesRequest(field_set.dependencies))
-    logger.info(
-        f"User specified these targets: {[target.address.spec for target in targets]}"
-    )
+    
 
-    if len(targets) == 0:
-        return None
-    target = targets[0]
-    wheel = await Get(
-        BuiltPackage,
-        PackageFieldSet, 
-        PyOxidizerFieldSet.create(target)
-    )
+    for target in targets:
+        logger.info(
+            f"Received these targets inside pyox targets: {target.address.target_name}"
+        )
+        if "dist" not in target.address.spec:
+            continue
 
-    logger.info(wheel)
+        logger.info("Creating Wheel")
+
+        packages = await Get(
+            FieldSetsPerTarget,
+            FieldSetsPerTargetRequest(PackageFieldSet, [target]),
+        )
+        logger.info(f"Retrieved the following FieldSetsPerTarget {packages}")
+
+        for package in packages.field_sets:
+            built_package = await Get(
+                BuiltPackage,
+                PackageFieldSet,
+                package
+            )
+            logger.info(f"This is the built package retrieved {built_package}")
+            # TODO: Limit for wheels only
+            wheel_relpaths = [artifact.relpath for artifact in built_package.artifacts if artifact.relpath]
+
+
 
     # Pip install pyoxidizer
     pyoxidizer_pex_get = await Get(
@@ -78,8 +92,12 @@ async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPacka
             packaging_policy=policy,
             config=python_config,
         )
+        exe.add_python_resources(exe.pip_download(['pyflakes']))
+        exe.add_python_resources(exe.read_package_root(
+            path='./',
+            packages=["helloworld_dist-0.0.1-py3-none-any.whl"],
+        ))
         return exe
-
     register_target("exe", make_exe)
     #register_target("resources", make_embedded_resources, depends=["exe"], default_build_script=True)
     #register_target("install", make_install, depends=["exe"], default=True)
@@ -94,7 +112,7 @@ async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPacka
     )
     logger.debug(config)
 
-    output_filename = "test-pyox-plugin"
+    output_filename = "./test-pyox-plugin"
     result = await Get(
         ProcessResult,
         PexProcess(
@@ -106,6 +124,10 @@ async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPacka
             output_files=(output_filename,),
         ),
     )
+    
+    logger.info("Completed running pyoxidizer, hopefully it ends up somewhere good")
+    logger.info(result.stdout)
+    
     return BuiltPackage(
         result.output_digest, artifacts=(BuiltPackageArtifact(output_filename),)
     )
