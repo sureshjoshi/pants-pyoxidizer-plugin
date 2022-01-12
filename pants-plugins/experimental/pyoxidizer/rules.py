@@ -92,6 +92,8 @@ async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPacka
         dist = default_python_distribution()
         policy = dist.make_python_packaging_policy()
         python_config = dist.make_python_interpreter_config()
+        python_config.run_command = "import main; main.say_hello()"
+        #python_config.run_module = "main"
         exe = dist.to_python_executable(
             name="{output_filename}",
             packaging_policy=policy,
@@ -125,7 +127,7 @@ async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPacka
             description="Running PyOxidizer build (...this can take a minute...)",
             input_digest=config,
             level=LogLevel.DEBUG,
-            output_files=(output_filename,),
+            output_files=("./build/x86_64-apple-darwin/debug/exe/helloworld-bin",),
         ),
     )
     
@@ -133,7 +135,7 @@ async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPacka
     logger.info(result.stdout)
     
     return BuiltPackage(
-        result.output_digest, artifacts=(BuiltPackageArtifact(output_filename),)
+        result.output_digest, artifacts=(BuiltPackageArtifact("./build/x86_64-apple-darwin/debug/exe/helloworld-bin"),)
     )
 
 

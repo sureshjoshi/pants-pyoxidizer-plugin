@@ -22,3 +22,9 @@ Please note: This is my first time writing a Pants Plugin - so this should not b
 ./pants --version
 ./pants package ::
 ```
+
+## Next Steps
+
+1. Take available PyOxidizer configuration or fallback to sane default
+2. Save binary to flattened dist/
+3. Add debug and release build flags
