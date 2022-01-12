@@ -13,3 +13,10 @@
 2. FastAPI 
 3. Numpy or Pandas
 4. GUI
+
+## Compilation Instructions
+
+```bash
+./pants --version
+./pants package ::
+```
