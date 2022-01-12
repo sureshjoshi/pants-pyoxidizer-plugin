@@ -1,3 +1,4 @@
+from pants.core.goals.package import OutputPathField
 from pants.engine.target import Dependencies, Target, COMMON_TARGET_FIELDS
 
 
@@ -10,5 +11,6 @@ class PyOxidizerTarget(Target):
     core_fields = (
         *COMMON_TARGET_FIELDS,
         Dependencies,
+        OutputPathField,
     )
     help = "The `oxy_clean` target describes how to build a single file executable."

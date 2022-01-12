@@ -17,5 +17,6 @@ python_distribution(
 
 oxy_clean(
     name="helloworld-bin",
-    dependencies=[":helloworld-dist"]
+    dependencies=[":helloworld-dist"],
+    output_path="helloworld-bin",
 )

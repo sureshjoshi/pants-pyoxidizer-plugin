@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import logging
 from textwrap import dedent
 
@@ -15,6 +15,7 @@ from pants.backend.python.util_rules.pex import (
 from pants.core.goals.package import (
     BuiltPackage,
     BuiltPackageArtifact,
+    OutputPathField,
     PackageFieldSet,
 )
 from pants.engine.fs import CreateDigest, Digest, FileContent
@@ -33,12 +34,14 @@ logger = logging.getLogger(__name__)
 class PyOxidizerFieldSet(PackageFieldSet):
     required_fields = (Dependencies,)
     dependencies: Dependencies
+    output_path: OutputPathField
 
 
 @rule(level=LogLevel.DEBUG)
 async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPackage:
+    logger.info(f"PyOxidizer field set: {field_set}")
+
     targets = await Get(Targets, DependenciesRequest(field_set.dependencies))
-    
 
     for target in targets:
         logger.info(
@@ -64,8 +67,7 @@ async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPacka
             logger.info(f"This is the built package retrieved {built_package}")
             # TODO: Limit for wheels only
             wheel_relpaths = [artifact.relpath for artifact in built_package.artifacts if artifact.relpath]
-
-
+            logger.info(f"This is the list of compiled wheels: {wheel_relpaths}")
 
     # Pip install pyoxidizer
     pyoxidizer_pex_get = await Get(
@@ -73,28 +75,31 @@ async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPacka
         PexRequest(
             output_filename="pyoxidizer.pex",
             internal_only=True,
-            requirements=PexRequirements(["pyoxidizer"]),
+            requirements=PexRequirements(["pyoxidizer==0.18.0"]),
             interpreter_constraints=InterpreterConstraints([">=3.9"]),
             main=ConsoleScript("pyoxidizer"),
         ),
     )
 
+    output_filename = field_set.output_path.value_or_default(file_ending=None)
+    logger.info(f"PyOxidizer is using this output filename: {output_filename}")
+
     # Create a PyOxidizer configuration file
     contents = dedent(
-        """
+        f"""
     def make_exe():
         print('Printing from make_exe inside of pyoxidizer.bzl')
         dist = default_python_distribution()
         policy = dist.make_python_packaging_policy()
         python_config = dist.make_python_interpreter_config()
         exe = dist.to_python_executable(
-            name="test-pyox-plugin",
+            name="{output_filename}",
             packaging_policy=policy,
             config=python_config,
         )
         exe.add_python_resources(exe.pip_download(['pyflakes']))
         exe.add_python_resources(exe.read_package_root(
-            path='./',
+            path="./",
             packages=["helloworld_dist-0.0.1-py3-none-any.whl"],
         ))
         return exe
@@ -112,7 +117,6 @@ async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPacka
     )
     logger.debug(config)
 
-    output_filename = "./test-pyox-plugin"
     result = await Get(
         ProcessResult,
         PexProcess(
