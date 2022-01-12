@@ -18,8 +18,8 @@ from pants.core.goals.package import (
     OutputPathField,
     PackageFieldSet,
 )
-from pants.engine.fs import CreateDigest, Digest, FileContent
-from pants.engine.rules import Get, collect_rules, rule
+from pants.engine.fs import CreateDigest, Digest, FileContent, MergeDigests, Snapshot
+from pants.engine.rules import Get, MultiGet, collect_rules, rule
 from pants.engine.process import ProcessResult
 from pants.engine.target import DependenciesRequest, FieldSetsPerTarget, FieldSetsPerTargetRequest, Targets
 from pants.engine.unions import UnionRule
@@ -40,34 +40,37 @@ class PyOxidizerFieldSet(PackageFieldSet):
 @rule(level=LogLevel.DEBUG)
 async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPackage:
     logger.info(f"PyOxidizer field set: {field_set}")
-
+    print()
     targets = await Get(Targets, DependenciesRequest(field_set.dependencies))
+    target = targets[0]
+    logger.info(
+        f"Received these targets inside pyox targets: {target.address.target_name}"
+    )
+    # for target in targets:
+    
 
-    for target in targets:
-        logger.info(
-            f"Received these targets inside pyox targets: {target.address.target_name}"
-        )
-        if "dist" not in target.address.spec:
-            continue
+        # logger.info("Creating Wheel")
 
-        logger.info("Creating Wheel")
+    packages = await Get(
+        FieldSetsPerTarget,
+        FieldSetsPerTargetRequest(PackageFieldSet, [target]),
+    )
+    logger.info(f"Retrieved the following FieldSetsPerTarget {packages}")
 
-        packages = await Get(
-            FieldSetsPerTarget,
-            FieldSetsPerTargetRequest(PackageFieldSet, [target]),
-        )
-        logger.info(f"Retrieved the following FieldSetsPerTarget {packages}")
+    # wheel_relpaths: list[str] = []
+    # for package in packages.field_sets:
+    #     built_package = await Get(
+    #         BuiltPackage,
+    #         PackageFieldSet,
+    #         package
+    #     )
+    #     logger.info(f"This is the built package retrieved {built_package}")
+    #     # TODO: Limit for wheels only
+    #     wheel_relpaths = [artifact.relpath for artifact in built_package.artifacts if artifact.relpath]
+    #     logger.info(f"This is the list of compiled wheels: {wheel_relpaths}")
 
-        for package in packages.field_sets:
-            built_package = await Get(
-                BuiltPackage,
-                PackageFieldSet,
-                package
-            )
-            logger.info(f"This is the built package retrieved {built_package}")
-            # TODO: Limit for wheels only
-            wheel_relpaths = [artifact.relpath for artifact in built_package.artifacts if artifact.relpath]
-            logger.info(f"This is the list of compiled wheels: {wheel_relpaths}")
+    wheels = await MultiGet(Get(BuiltPackage, PackageFieldSet, field_set) for field_set in packages.field_sets)
+    logger.info(f"This is the built package retrieved {wheels}")
 
     # Pip install pyoxidizer
     pyoxidizer_pex_get = await Get(
@@ -99,12 +102,10 @@ async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPacka
             packaging_policy=policy,
             config=python_config,
         )
-        exe.add_python_resources(exe.pip_download(['pyflakes']))
-        exe.add_python_resources(exe.read_package_root(
-            path="./",
-            packages=["helloworld_dist-0.0.1-py3-none-any.whl"],
-        ))
+        exe.add_python_resources(exe.pip_download(["pyflakes"]))
+        exe.add_python_resources(exe.pip_install(["./helloworld_dist-0.0.1-py3-none-any.whl"]))
         return exe
+
     register_target("exe", make_exe)
     #register_target("resources", make_embedded_resources, depends=["exe"], default_build_script=True)
     #register_target("install", make_install, depends=["exe"], default=True)
@@ -119,13 +120,17 @@ async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPacka
     )
     logger.debug(config)
 
+    digests = [built_package.digest for built_package in wheels]
+    all_digests = (config, *digests)
+    context_request = await Get(Digest, MergeDigests(d for d in all_digests if d))
+
     result = await Get(
         ProcessResult,
         PexProcess(
             pyoxidizer_pex_get,
             argv=["build"],
             description="Running PyOxidizer build (...this can take a minute...)",
-            input_digest=config,
+            input_digest=context_request,
             level=LogLevel.DEBUG,
             output_files=("./build/x86_64-apple-darwin/debug/exe/helloworld-bin",),
         ),
