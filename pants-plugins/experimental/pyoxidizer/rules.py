@@ -1,4 +1,6 @@
 from dataclasses import dataclass
+import logging
+from textwrap import dedent
 
 from pants.backend.python.target_types import ConsoleScript
 from pants.backend.python.util_rules.interpreter_constraints import (
@@ -18,18 +20,40 @@ from pants.core.goals.package import (
 from pants.engine.fs import CreateDigest, Digest, FileContent
 from pants.engine.rules import Get, collect_rules, rule
 from pants.engine.process import ProcessResult
+from pants.engine.target import Dependencies, DependenciesRequest, Targets
 from pants.engine.unions import UnionRule
 from pants.util.logging import LogLevel
-from textwrap import dedent
+
+from experimental.pyoxidizer.target_types import PyOxidizerTarget
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
 class PyOxidizerFieldSet(PackageFieldSet):
-    required_fields = ()
+    required_fields = (Dependencies,)
+    dependencies: Dependencies
 
 
 @rule(level=LogLevel.DEBUG)
-async def package_pyoxidizer_binary() -> BuiltPackage:
+async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPackage:
+    targets = await Get(Targets, DependenciesRequest(field_set.dependencies))
+    logger.info(
+        f"User specified these targets: {[target.address.spec for target in targets]}"
+    )
+
+    if len(targets) == 0:
+        return None
+    target = targets[0]
+    wheel = await Get(
+        BuiltPackage,
+        PackageFieldSet, 
+        PyOxidizerFieldSet.create(target)
+    )
+
+    logger.info(wheel)
+
+    # Pip install pyoxidizer
     pyoxidizer_pex_get = await Get(
         Pex,
         PexRequest(
@@ -41,6 +65,7 @@ async def package_pyoxidizer_binary() -> BuiltPackage:
         ),
     )
 
+    # Create a PyOxidizer configuration file
     contents = dedent(
         """
     def make_exe():
@@ -60,7 +85,6 @@ async def package_pyoxidizer_binary() -> BuiltPackage:
     #register_target("install", make_install, depends=["exe"], default=True)
     #register_target("msi_installer", make_msi, depends=["exe"])
     resolve_targets()
-
         """
     )
 
@@ -68,7 +92,7 @@ async def package_pyoxidizer_binary() -> BuiltPackage:
         Digest,
         CreateDigest([FileContent("pyoxidizer.bzl", contents.encode("utf-8"))]),
     )
-    print(config)
+    logger.debug(config)
 
     output_filename = "test-pyox-plugin"
     result = await Get(

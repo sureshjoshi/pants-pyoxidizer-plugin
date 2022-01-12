@@ -9,7 +9,10 @@ backend_packages = [
 ]
 
 [source]
-root_patterns = ["pants-plugins"]
+root_patterns = [
+    "pants-plugins",
+    "helloworld", 
+]
 
 [python]
 interpreter_constraints = [">=3.9"]
