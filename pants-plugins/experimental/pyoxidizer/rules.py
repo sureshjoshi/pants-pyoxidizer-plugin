@@ -134,7 +134,7 @@ def generate_pyoxidizer_config(output_filename: str, field_set: PyOxidizerFieldS
     if unclassified_resources is not None:
         download_to_fs_config = dedent(
             f"""
-            for resource in exe.pip_download({list(unclassified_resources)}):
+            for resource in exe.pip_install({list(unclassified_resources)}):
                 resource.add_location = "filesystem-relative:lib"
                 exe.add_python_resource(resource)"""
         )
@@ -160,7 +160,9 @@ def generate_pyoxidizer_config(output_filename: str, field_set: PyOxidizerFieldS
             config=python_config,
         )
 
-        exe.add_python_resources(exe.pip_download({wheel_relpaths}))
+        # pip_download requires that wheels are available for each dep
+        # exe.add_python_resources(exe.pip_download({wheel_relpaths}))
+        exe.add_python_resources(exe.pip_install({wheel_relpaths}))
         {download_to_fs_config}
 
         return exe

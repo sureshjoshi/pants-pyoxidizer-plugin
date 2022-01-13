@@ -1,4 +1,5 @@
 fastapi
+kivy
 numpy
 pydantic
 uvicorn
