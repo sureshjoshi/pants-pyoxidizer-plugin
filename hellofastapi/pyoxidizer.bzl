@@ -1,29 +1,48 @@
 def make_exe():
-    print('Printing from make_exe inside of pyoxidizer.bzl')
     dist = default_python_distribution()
+
+    # https://pyoxidizer.readthedocs.io/en/stable/pyoxidizer_packaging_additional_files.html#packaging-installing-resources-on-the-filesystem
     policy = dist.make_python_packaging_policy()
 
-    # Note: Adding this for pydanic (unable to load from memory) - cannot find .so files
+    # Note: Adding this for pydanic (unable to load from memory)
     # https://github.com/indygreg/PyOxidizer/issues/438
-    policy.resources_location_fallback = "filesystem-relative:prefix" 
+    policy.resources_location_fallback = "filesystem-relative:lib"
+
     python_config = dist.make_python_interpreter_config()
-    python_config.run_command = "import main; main.say_hello()"
-    #python_config.run_module = "main"
+    python_config.run_module = "hellofastapi.main"
+
     exe = dist.to_python_executable(
         name="hellofastapi",
         packaging_policy=policy,
         config=python_config,
     )
-    exe.add_python_resources(exe.pip_download(["pydantic", "fastapi", "uvicorn"]))
-    # exe.add_in_memory_python_resources(dist.read_package_root(
-    #     path=".",
-    #     packages=["hello"],
-    # ))
-    #exe.add_python_resources(exe.pip_install({wheel_relpaths}))
+
+    exe.add_python_resources(exe.pip_download(["fastapi", "pydantic", "uvicorn"]))
+    exe.add_python_resources(
+        exe.read_package_root(
+            path=".",
+            packages=["hellofastapi"],
+        )
+    )
     return exe
 
+
+def make_embedded_resources(exe):
+    return exe.to_embedded_resources()
+
+
+def make_install(exe):
+    # Create an object that represents our installed application file layout.
+    files = FileManifest()
+    # Add the generated executable to our install layout in the root directory.
+    files.add_python_resource(".", exe)
+    return files
+
+
 register_target("exe", make_exe)
-#register_target("resources", make_embedded_resources, depends=["exe"], default_build_script=True)
-#register_target("install", make_install, depends=["exe"], default=True)
-#register_target("msi_installer", make_msi, depends=["exe"])
+register_target(
+    "resources", make_embedded_resources, depends=["exe"], default_build_script=True
+)
+register_target("install", make_install, depends=["exe"], default=True)
+
 resolve_targets()

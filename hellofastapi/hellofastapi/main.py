@@ -8,6 +8,11 @@ app = FastAPI()
 async def root():
     return {"message": "Hello World"}
 
-if __name__ == "__main__":
+
+def main():
     # Don't actually run FastAPI like this - it's just a PyOx proof-of-concept
     uvicorn.run(app, host="localhost", port=8000)
+
+
+if __name__ == "__main__":
+    main()
