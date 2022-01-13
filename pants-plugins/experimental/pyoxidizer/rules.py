@@ -44,16 +44,12 @@ class PyOxidizerFieldSet(PackageFieldSet):
 
 @rule(level=LogLevel.DEBUG)
 async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPackage:
-    logger.info(f"PyOxidizer field set: {field_set}")
-    print()
+    logger.info(f"Incoming package_pyoxidizer_binary field set: {field_set}")
     targets = await Get(Targets, DependenciesRequest(field_set.dependencies))
     target = targets[0]
     logger.info(
         f"Received these targets inside pyox targets: {target.address.target_name}"
     )
-    # for target in targets:
-
-    # logger.info("Creating Wheel")
 
     packages = await Get(
         FieldSetsPerTarget,
@@ -129,7 +125,6 @@ async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPacka
         Digest,
         CreateDigest([FileContent("pyoxidizer.bzl", contents.encode("utf-8"))]),
     )
-    logger.debug(config)
 
     # Pulling this merged digests idea from the Docker plugin
     digests = [built_package.digest for built_package in built_packages]
@@ -151,7 +146,6 @@ async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPacka
         ),
     )
 
-    logger.info("Completed running pyoxidizer, hopefully it ends up somewhere good")
     logger.info(result.stdout)
 
     # TODO: Hardcoding this artifact path - as I don't know the correct API to grab it
