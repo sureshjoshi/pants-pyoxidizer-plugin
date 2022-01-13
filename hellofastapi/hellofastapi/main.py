@@ -15,4 +15,5 @@ def main():
 
 
 if __name__ == "__main__":
+    print("Launching HelloFastAPI from __main__")
     main()

@@ -3,28 +3,20 @@ def make_exe():
 
     policy = dist.make_python_packaging_policy()
 
-    # Note: Adding this for pydanic (unable to load from memory error otherwise)
-    # https://pyoxidizer.readthedocs.io/en/stable/pyoxidizer_packaging_additional_files.html#packaging-installing-resources-on-the-filesystem
-    # https://github.com/indygreg/PyOxidizer/issues/438
-    policy.resources_location_fallback = "filesystem-relative:lib"
-
     python_config = dist.make_python_interpreter_config()
-    python_config.run_module = "hellofastapi.main"
+    python_config.run_module = "helloworld.main"
 
     exe = dist.to_python_executable(
-        name="hellofastapi",
+        name="helloworld-bin",
         packaging_policy=policy,
         config=python_config,
     )
 
-    # Explicitly download the dependencies of this project
-    exe.add_python_resources(exe.pip_download(["fastapi", "pydantic", "uvicorn"]))
-    
     # Recursively scan the filesystem at 'path' and grab matching 'packages'
     exe.add_python_resources(
         exe.read_package_root(
             path=".",
-            packages=["hellofastapi"],
+            packages=["helloworld"],
         )
     )
     return exe
