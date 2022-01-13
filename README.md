@@ -15,7 +15,7 @@ These are some typical workflows, which also highlight some unique circumstances
 
 1. ~~Hello World~~
 2. ~~FastAPI~~ -> Installing Classified Resources on the Filesystem
-3. Numpy or Pandas -> Installing Unclassified Files on the Filesystem
+3. ~~Numpy~~ -> Installing Unclassified Files on the Filesystem
 4. GUI
 
 ## Compilation Instructions
