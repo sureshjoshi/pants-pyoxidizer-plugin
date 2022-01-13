@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import logging
 from textwrap import dedent
 
@@ -142,20 +142,15 @@ async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPacka
             output_files=(
                 f"./build/x86_64-apple-darwin/debug/install/{output_filename}",
             ),
-            output_directories=("build"),
+            output_directories=["build"],
         ),
     )
-
-    logger.info(result.stdout)
-
-    # TODO: Hardcoding this artifact path - as I don't know the correct API to grab it
+    # logger.info(result.output_digest)
+    snapshot = await Get(Snapshot, Digest, result.output_digest)
+    artifacts = [BuiltPackageArtifact(file) for file in snapshot.files]
     return BuiltPackage(
         result.output_digest,
-        artifacts=(
-            BuiltPackageArtifact(
-                f"./build/x86_64-apple-darwin/debug/install/{output_filename}"
-            ),
-        ),
+        artifacts=tuple(artifacts),
     )
 
 
