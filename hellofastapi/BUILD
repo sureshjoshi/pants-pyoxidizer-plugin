@@ -1,0 +1,25 @@
+python_sources(
+    name="libhellofastapi", 
+    sources=["**/*.py"],
+    dependencies=[
+        "//:uvicorn",
+    ],
+)
+
+python_distribution(
+    name="hellofastapi-dist",
+    dependencies=[":libhellofastapi"],
+    wheel=True,
+    sdist=False,
+    provides=python_artifact(
+        name="hellofastapi-dist",
+        version="0.0.1",
+        description="A distribution for the hello FastApi library.",
+    ),
+)
+
+oxy_clean(
+    name="hellofastapi-bin",
+    dependencies=[":hellofastapi-dist"],
+    output_path="hellofastapi-bin",
+)

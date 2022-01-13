@@ -57,20 +57,9 @@ async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPacka
     )
     logger.info(f"Retrieved the following FieldSetsPerTarget {packages}")
 
-    # wheel_relpaths: list[str] = []
-    # for package in packages.field_sets:
-    #     built_package = await Get(
-    #         BuiltPackage,
-    #         PackageFieldSet,
-    #         package
-    #     )
-    #     logger.info(f"This is the built package retrieved {built_package}")
-    #     # TODO: Limit for wheels only
-    #     wheel_relpaths = [artifact.relpath for artifact in built_package.artifacts if artifact.relpath]
-    #     logger.info(f"This is the list of compiled wheels: {wheel_relpaths}")
-
-    wheels = await MultiGet(Get(BuiltPackage, PackageFieldSet, field_set) for field_set in packages.field_sets)
-    logger.info(f"This is the built package retrieved {wheels}")
+    built_packages = await MultiGet(Get(BuiltPackage, PackageFieldSet, field_set) for field_set in packages.field_sets)
+    wheel_relpaths = [artifact.relpath for wheel in built_packages for artifact in wheel.artifacts]
+    logger.info(f"This is the built package retrieved {built_packages}")
 
     # Pip install pyoxidizer
     pyoxidizer_pex_get = await Get(
@@ -94,6 +83,10 @@ async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPacka
         print('Printing from make_exe inside of pyoxidizer.bzl')
         dist = default_python_distribution()
         policy = dist.make_python_packaging_policy()
+
+        # Note: Adding this for pydanic (unable to load from memory) - cannot find .so files
+        # https://github.com/indygreg/PyOxidizer/issues/438
+        policy.resources_location_fallback = "filesystem-relative:prefix" 
         python_config = dist.make_python_interpreter_config()
         python_config.run_command = "import main; main.say_hello()"
         #python_config.run_module = "main"
@@ -102,8 +95,8 @@ async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPacka
             packaging_policy=policy,
             config=python_config,
         )
-        exe.add_python_resources(exe.pip_download(["pyflakes"]))
-        exe.add_python_resources(exe.pip_install(["./helloworld_dist-0.0.1-py3-none-any.whl"]))
+        #exe.add_python_resources(exe.pip_download(["pydantic"]))
+        exe.add_python_resources(exe.pip_install({wheel_relpaths}))
         return exe
 
     register_target("exe", make_exe)
@@ -120,9 +113,10 @@ async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPacka
     )
     logger.debug(config)
 
-    digests = [built_package.digest for built_package in wheels]
+    # Pulling this merged digests idea from the Docker plugin
+    digests = [built_package.digest for built_package in built_packages]
     all_digests = (config, *digests)
-    context_request = await Get(Digest, MergeDigests(d for d in all_digests if d))
+    merged_digest = await Get(Digest, MergeDigests(d for d in all_digests if d))
 
     result = await Get(
         ProcessResult,
@@ -130,17 +124,18 @@ async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPacka
             pyoxidizer_pex_get,
             argv=["build"],
             description="Running PyOxidizer build (...this can take a minute...)",
-            input_digest=context_request,
+            input_digest=merged_digest,
             level=LogLevel.DEBUG,
-            output_files=("./build/x86_64-apple-darwin/debug/exe/helloworld-bin",),
+            output_files=(f"./build/x86_64-apple-darwin/debug/exe/{output_filename}",),
         ),
     )
     
     logger.info("Completed running pyoxidizer, hopefully it ends up somewhere good")
     logger.info(result.stdout)
     
+    # TODO: Hardcoding this artifact path - as I don't know the correct API to grab it
     return BuiltPackage(
-        result.output_digest, artifacts=(BuiltPackageArtifact("./build/x86_64-apple-darwin/debug/exe/helloworld-bin"),)
+        result.output_digest, artifacts=(BuiltPackageArtifact(f"./build/x86_64-apple-darwin/debug/exe/{output_filename}"),)
     )
 
 

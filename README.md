@@ -28,3 +28,7 @@ Please note: This is my first time writing a Pants Plugin - so this should not b
 1. Take available PyOxidizer configuration or fallback to sane default
 2. Save binary to flattened dist/
 3. Add debug and release build flags
+
+## Problems
+
+- Pydantic (in FastApi) cannot be loaded from memory, so it requires using [filesystem-relative:prefix](https://github.com/indygreg/PyOxidizer/issues/438) as a workaround. However, at the moment - while building PyOxidizer from wheels, that does not seem to work
