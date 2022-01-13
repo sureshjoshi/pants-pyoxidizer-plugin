@@ -1,8 +1,14 @@
+import sys
+
+# Patch missing sys.argv[0] which is None for some reason when using PyOxidizer
+# Kivy fails on importing the library, because it tries to iterate on sys.argv[0]
+if sys.argv[0] is None:
+    sys.argv[0] = sys.executable
+    print(f"Patched sys.argv to {sys.argv}")
+
 import kivy
 from kivy.app import App
 from kivy.uix.label import Label
-
-kivy.require("2.0.0")
 
 
 class MyFirstKivyApp(App):
@@ -11,6 +17,7 @@ class MyFirstKivyApp(App):
 
 
 def main():
+    kivy.require("2.0.0")
     MyFirstKivyApp().run()
 
 

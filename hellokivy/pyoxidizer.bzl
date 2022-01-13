@@ -17,9 +17,10 @@ def make_exe():
         config=python_config,
     )
 
-    # Explicitly download the dependencies of this project
-    exe.add_python_resources(exe.pip_install(["kivy"]))
-    
+    for resource in exe.pip_install(["kivy"]):
+        resource.add_location = "filesystem-relative:lib"
+        exe.add_python_resource(resource)
+
     # Recursively scan the filesystem at 'path' and grab matching 'packages'
     exe.add_python_resources(
         exe.read_package_root(
