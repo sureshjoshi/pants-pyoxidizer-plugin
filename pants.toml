@@ -1,7 +1,9 @@
 [GLOBAL]
 pants_version = "2.8.0"
-print_stacktrace = true
+pantsd = true 
+build_patterns = ["BUILD.pants", "BUILD"]
 pythonpath = ["pants-plugins"]
+print_stacktrace = true
 
 backend_packages = [
     "pants.backend.python",
@@ -12,10 +14,12 @@ backend_packages = [
 root_patterns = [
     "pants-plugins",
     "helloworld", 
+    "hellofastapi", 
 ]
 
 [python]
 interpreter_constraints = [">=3.9"]
+requirement_constraints = "requirements.constraints.txt"
 
 [anonymous-telemetry]
 enabled = false
