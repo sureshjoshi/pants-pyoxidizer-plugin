@@ -1,0 +1,22 @@
+python_sources(
+    name="libhellonumpy", 
+    sources=["**/*.py"]
+)
+
+python_distribution(
+    name="hellonumpy-dist",
+    dependencies=[":libhellonumpy"],
+    wheel=True,
+    sdist=False,
+    provides=python_artifact(
+        name="hellonumpy-dist",
+        version="0.0.1",
+        description="A distribution for the hello Numpy library.",
+    ),
+)
+
+oxy_clean(
+    name="hellonumpy-bin",
+    dependencies=[":hellonumpy-dist"],
+    output_path="hellonumpy-bin",
+)
