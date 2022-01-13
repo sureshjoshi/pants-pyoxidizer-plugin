@@ -19,5 +19,5 @@ oxy_clean(
     name="hellonumpy-bin",
     entry_point="hellonumpy.main",
     dependencies=[":hellonumpy-dist"],
-    output_path="hellonumpy",
+    filesystem_resources=["numpy"],
 )

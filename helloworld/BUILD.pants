@@ -19,5 +19,4 @@ oxy_clean(
     name="helloworld-bin",
     entry_point="helloworld.main",
     dependencies=[":helloworld-dist"],
-    output_path="helloworld",
 )

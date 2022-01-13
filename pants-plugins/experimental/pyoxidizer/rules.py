@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import logging
-from textwrap import dedent
+from textwrap import indent, dedent
 
 from pants.backend.python.target_types import ConsoleScript
 from pants.backend.python.util_rules.interpreter_constraints import (
@@ -15,7 +15,6 @@ from pants.backend.python.util_rules.pex import (
 from pants.core.goals.package import (
     BuiltPackage,
     BuiltPackageArtifact,
-    OutputPathField,
     PackageFieldSet,
 )
 from pants.engine.fs import CreateDigest, Digest, FileContent, MergeDigests, Snapshot
@@ -30,7 +29,7 @@ from pants.engine.target import (
 from pants.engine.unions import UnionRule
 from pants.util.logging import LogLevel
 
-from experimental.pyoxidizer.target_types import PyOxidizerEntryPointField, PyOxidizerDependenciesField
+from experimental.pyoxidizer.target_types import PyOxidizerEntryPointField, PyOxidizerDependenciesField, PyOxidizerUnclassifiedResources
 
 logger = logging.getLogger(__name__)
 
@@ -38,9 +37,11 @@ logger = logging.getLogger(__name__)
 @dataclass(frozen=True)
 class PyOxidizerFieldSet(PackageFieldSet):
     required_fields = (PyOxidizerDependenciesField,)
+    
     entry_point: PyOxidizerEntryPointField
     dependencies: PyOxidizerDependenciesField
-    output_path: OutputPathField
+    unclassified_resources: PyOxidizerUnclassifiedResources
+    # output_path: OutputPathField # TODO: Remove until API is planned
 
 
 @rule(level=LogLevel.DEBUG)
@@ -48,6 +49,7 @@ async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPacka
     logger.info(f"Incoming package_pyoxidizer_binary field set: {field_set}")
     targets = await Get(Targets, DependenciesRequest(field_set.dependencies))
     target = targets[0]
+
     logger.info(
         f"Received these targets inside pyox targets: {target.address.target_name}"
     )
@@ -81,11 +83,12 @@ async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPacka
         ),
     )
     
-    config_contents = generate_pyoxidizer_config(field_set, wheel_relpaths)
+    config_contents = generate_pyoxidizer_config(output_filename=field_set.address.target_name, field_set=field_set, wheel_relpaths=wheel_relpaths)
     config = await Get(
         Digest,
         CreateDigest([FileContent("pyoxidizer.bzl", config_contents.encode("utf-8"))]),
     )
+    logger.info(config_contents)
 
     # Pulling this merged digests idea from the Docker plugin
     digests = [built_package.digest for built_package in built_packages]
@@ -117,21 +120,34 @@ def rules():
 
 
 # TODO: Can this be converted into a jinja template or similar sitting in the repo?
-def generate_pyoxidizer_config(field_set: PyOxidizerFieldSet, wheel_relpaths: list[str]) -> str:
-    output_filename = field_set.output_path.value_or_default(file_ending=None)
-    logger.info(f"PyOxidizer is using this output filename: {output_filename}")
-
+def generate_pyoxidizer_config(output_filename: str, field_set: PyOxidizerFieldSet, wheel_relpaths: list[str]) -> str:
+    
+    # Conditionally add a config line for the entry point (defaults to REPL)
     entry_point = field_set.entry_point.value
-    # entry_point_module = entry_point.module if entry_point is not None else ""
-    run_module_config = f"python_config.run_module = '{entry_point.module}'" if entry_point is not None else ""
+    run_module_config = f"python_config.run_module = '{entry_point}'" if entry_point is not None else ""
 
-    contents = dedent(
-        f"""
+    
+    # field_set.unclassified_resources.value
+    # Add resources that need a specific location
+    unclassified_resources = field_set.unclassified_resources.value
+    download_to_fs_config = ""
+    if unclassified_resources is not None:
+        download_to_fs_config = dedent(
+            f"""
+            for resource in exe.pip_download({list(unclassified_resources)}):
+                resource.add_location = "filesystem-relative:lib"
+                exe.add_python_resource(resource)"""
+        )
+        # TODO: Okay, this is just getting ridiculous - definitely need a proper template
+        download_to_fs_config = indent(download_to_fs_config, "        ")
+
+
+    contents = f"""
     def make_exe():
         dist = default_python_distribution()
         policy = dist.make_python_packaging_policy()
 
-        # Note: Adding this for pydanic (unable to load from memory)
+        # Note: Adding this for pydanic and libs that have the "unable to load from memory" error
         # https://github.com/indygreg/PyOxidizer/issues/438
         policy.resources_location_fallback = "filesystem-relative:lib"
         
@@ -143,7 +159,10 @@ def generate_pyoxidizer_config(field_set: PyOxidizerFieldSet, wheel_relpaths: li
             packaging_policy=policy,
             config=python_config,
         )
-        exe.add_python_resources(exe.pip_install({wheel_relpaths}))
+
+        exe.add_python_resources(exe.pip_download({wheel_relpaths}))
+        {download_to_fs_config}
+
         return exe
 
     def make_embedded_resources(exe):
@@ -161,5 +180,6 @@ def generate_pyoxidizer_config(field_set: PyOxidizerFieldSet, wheel_relpaths: li
     register_target("install", make_install, depends=["exe"], default=True)
     resolve_targets()
         """
-    )
-    return contents
+
+    logger.info(contents)
+    return dedent(contents)
