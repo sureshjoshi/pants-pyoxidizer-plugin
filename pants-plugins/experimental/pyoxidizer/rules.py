@@ -30,7 +30,7 @@ from pants.engine.target import (
 from pants.engine.unions import UnionRule
 from pants.util.logging import LogLevel
 
-from experimental.pyoxidizer.target_types import PyOxidizerDependenciesField
+from experimental.pyoxidizer.target_types import PyOxidizerEntryPointField, PyOxidizerDependenciesField
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +38,7 @@ logger = logging.getLogger(__name__)
 @dataclass(frozen=True)
 class PyOxidizerFieldSet(PackageFieldSet):
     required_fields = (PyOxidizerDependenciesField,)
+    entry_point: PyOxidizerEntryPointField
     dependencies: PyOxidizerDependenciesField
     output_path: OutputPathField
 
@@ -61,8 +62,10 @@ async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPacka
         Get(BuiltPackage, PackageFieldSet, field_set)
         for field_set in packages.field_sets
     )
+
+    # TODO: Can this be walrus'd? Double for with repeated artifact.relpath is ugly
     wheel_relpaths = [
-        artifact.relpath for wheel in built_packages for artifact in wheel.artifacts
+        artifact.relpath for wheel in built_packages for artifact in wheel.artifacts if artifact.relpath is not None
     ]
     logger.info(f"This is the built package retrieved {built_packages}")
 
@@ -77,11 +80,51 @@ async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPacka
             main=ConsoleScript("pyoxidizer"),
         ),
     )
+    
+    config_contents = generate_pyoxidizer_config(field_set, wheel_relpaths)
+    config = await Get(
+        Digest,
+        CreateDigest([FileContent("pyoxidizer.bzl", config_contents.encode("utf-8"))]),
+    )
 
+    # Pulling this merged digests idea from the Docker plugin
+    digests = [built_package.digest for built_package in built_packages]
+    all_digests = (config, *digests)
+    merged_digest = await Get(Digest, MergeDigests(d for d in all_digests if d))
+
+    result = await Get(
+        ProcessResult,
+        PexProcess(
+            pyoxidizer_pex_get,
+            argv=["build"],
+            description="Running PyOxidizer build (...this can take a minute...)",
+            input_digest=merged_digest,
+            level=LogLevel.DEBUG,
+            output_directories=["build"],
+        ),
+    )
+    # logger.info(result.output_digest)
+    snapshot = await Get(Snapshot, Digest, result.output_digest)
+    artifacts = [BuiltPackageArtifact(file) for file in snapshot.files]
+    return BuiltPackage(
+        result.output_digest,
+        artifacts=tuple(artifacts),
+    )
+
+
+def rules():
+    return [*collect_rules(), UnionRule(PackageFieldSet, PyOxidizerFieldSet)]
+
+
+# TODO: Can this be converted into a jinja template or similar sitting in the repo?
+def generate_pyoxidizer_config(field_set: PyOxidizerFieldSet, wheel_relpaths: list[str]) -> str:
     output_filename = field_set.output_path.value_or_default(file_ending=None)
     logger.info(f"PyOxidizer is using this output filename: {output_filename}")
 
-    # Create a PyOxidizer configuration file
+    entry_point = field_set.entry_point.value
+    # entry_point_module = entry_point.module if entry_point is not None else ""
+    run_module_config = f"python_config.run_module = '{entry_point.module}'" if entry_point is not None else ""
+
     contents = dedent(
         f"""
     def make_exe():
@@ -93,8 +136,7 @@ async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPacka
         policy.resources_location_fallback = "filesystem-relative:lib"
         
         python_config = dist.make_python_interpreter_config()
-        #python_config.run_command = "import main; main.say_hello()"
-        #python_config.run_module = "main"
+        {run_module_config}
         
         exe = dist.to_python_executable(
             name="{output_filename}",
@@ -120,39 +162,4 @@ async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPacka
     resolve_targets()
         """
     )
-
-    config = await Get(
-        Digest,
-        CreateDigest([FileContent("pyoxidizer.bzl", contents.encode("utf-8"))]),
-    )
-
-    # Pulling this merged digests idea from the Docker plugin
-    digests = [built_package.digest for built_package in built_packages]
-    all_digests = (config, *digests)
-    merged_digest = await Get(Digest, MergeDigests(d for d in all_digests if d))
-
-    result = await Get(
-        ProcessResult,
-        PexProcess(
-            pyoxidizer_pex_get,
-            argv=["build"],
-            description="Running PyOxidizer build (...this can take a minute...)",
-            input_digest=merged_digest,
-            level=LogLevel.DEBUG,
-            output_files=(
-                f"./build/x86_64-apple-darwin/debug/install/{output_filename}",
-            ),
-            output_directories=["build"],
-        ),
-    )
-    # logger.info(result.output_digest)
-    snapshot = await Get(Snapshot, Digest, result.output_digest)
-    artifacts = [BuiltPackageArtifact(file) for file in snapshot.files]
-    return BuiltPackage(
-        result.output_digest,
-        artifacts=tuple(artifacts),
-    )
-
-
-def rules():
-    return [*collect_rules(), UnionRule(PackageFieldSet, PyOxidizerFieldSet)]
+    return contents

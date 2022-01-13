@@ -11,10 +11,9 @@ backend_packages = [
 ]
 
 [source]
+marker_filenames = ["BUILD.pants"]
 root_patterns = [
     "pants-plugins",
-    "helloworld", 
-    "hellofastapi", 
 ]
 
 [python]

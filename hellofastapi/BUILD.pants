@@ -20,6 +20,7 @@ python_distribution(
 
 oxy_clean(
     name="hellofastapi-bin",
+    entry_point="hellofastapi.main",
     dependencies=[":hellofastapi-dist"],
-    output_path="hellofastapi-bin",
+    output_path="hellofastapi",
 )

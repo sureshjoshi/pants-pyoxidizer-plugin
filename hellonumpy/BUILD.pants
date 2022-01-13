@@ -17,6 +17,7 @@ python_distribution(
 
 oxy_clean(
     name="hellonumpy-bin",
+    entry_point="hellonumpy.main",
     dependencies=[":hellonumpy-dist"],
-    output_path="hellonumpy-bin",
+    output_path="hellonumpy",
 )
