@@ -33,10 +33,10 @@ class PyOxidizerUnclassifiedResources(StringSequenceField):
 
 # TODO: I think this should be automatically picked up, like isort or black configs - just not sure how to access the source root from the oxy_clean target
 class PyOxidizerConfigSourceField(SingleSourceField):
-    alias = "config"
+    alias = "template"
     default = None
     required = False
-    expected_file_extensions = (".bzl",)
+    expected_file_extensions = (".bzlt",)
 
 
 # TODO: Output Path is useless right now, since PyOx builds elsewhere

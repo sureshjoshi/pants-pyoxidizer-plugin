@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 import logging
+from string import Template
 from textwrap import indent, dedent
 
 from pants.backend.python.target_types import ConsoleScript
@@ -19,7 +20,15 @@ from pants.core.goals.package import (
     PackageFieldSet,
 )
 from pants.core.util_rules.source_files import SourceFiles, SourceFilesRequest
-from pants.engine.fs import CreateDigest, Digest, FileContent, MergeDigests, RemovePrefix, Snapshot
+from pants.engine.fs import (
+    CreateDigest,
+    Digest,
+    DigestContents,
+    FileContent,
+    MergeDigests,
+    RemovePrefix,
+    Snapshot,
+)
 from pants.engine.rules import Get, MultiGet, collect_rules, rule
 from pants.engine.process import ProcessResult
 from pants.engine.target import (
@@ -48,7 +57,7 @@ class PyOxidizerFieldSet(PackageFieldSet):
     entry_point: PyOxidizerEntryPointField
     dependencies: PyOxidizerDependenciesField
     unclassified_resources: PyOxidizerUnclassifiedResources
-    source: PyOxidizerConfigSourceField
+    template: PyOxidizerConfigSourceField
 
     # output_path: OutputPathField # TODO: Remove until API is planned
 
@@ -98,17 +107,32 @@ async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPacka
         ),
     )
 
-    
-
-    logger.info(field_set.source)
+    logger.info(field_set.template)
     config_digest = None
-    if field_set.source is not None:
-        config_source = await Get(SourceFiles, SourceFilesRequest([field_set.source]))
-        config_file_prefix = str(Path(config_source.files[0]).parent)
-        config_digest = await Get(Digest, RemovePrefix(config_source.snapshot.digest, config_file_prefix))
-        snapshot = await Get(Snapshot, Digest, config_digest)
-        logger.info(snapshot)
-        
+    if field_set.template is not None:
+        config_template_source = await Get(
+            SourceFiles, SourceFilesRequest([field_set.template])
+        )
+        digest_contents = await Get(
+            DigestContents, Digest, config_template_source.snapshot.digest
+        )
+        config_template = digest_contents[0].content.decode("utf-8")
+        config_content = hydrate_template(
+            Template(config_template), wheels=wheel_relpaths
+        )
+        logger.info(config_content)
+        config_digest = await Get(
+            Digest,
+            CreateDigest(
+                [FileContent("pyoxidizer.bzl", config_content.encode("utf-8"))]
+            ),
+        )
+        # config_file_prefix = str(Path(config_source.files[0]).parent)
+        # config_digest = await Get(
+        #     Digest, RemovePrefix(config_source.snapshot.digest, config_file_prefix)
+        # )
+        # snapshot = await Get(Snapshot, Digest, config_digest)
+
     # raise RuntimeError()
 
     # config_contents = generate_pyoxidizer_config(
@@ -145,10 +169,6 @@ async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPacka
         result.output_digest,
         artifacts=tuple(artifacts),
     )
-
-
-def rules():
-    return [*collect_rules(), UnionRule(PackageFieldSet, PyOxidizerFieldSet)]
 
 
 # TODO: Can this be converted into a jinja template or similar sitting in the repo?
@@ -219,3 +239,11 @@ def generate_pyoxidizer_config(
 
     logger.info(contents)
     return dedent(contents)
+
+
+def hydrate_template(template: Template, wheels: list[str]) -> str:
+    return dedent(template.safe_substitute(wheels=wheels))
+
+
+def rules():
+    return [*collect_rules(), UnionRule(PackageFieldSet, PyOxidizerFieldSet)]

@@ -18,6 +18,5 @@ python_distribution(
 oxy_clean(
     name="helloworld-bin",
     entry_point="helloworld.main",
-    config="pyoxidizer.bzl",
     dependencies=[":helloworld-dist"],
 )
