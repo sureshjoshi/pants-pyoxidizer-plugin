@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from pathlib import Path
 import logging
 from textwrap import indent, dedent
 
@@ -17,7 +18,8 @@ from pants.core.goals.package import (
     BuiltPackageArtifact,
     PackageFieldSet,
 )
-from pants.engine.fs import CreateDigest, Digest, FileContent, MergeDigests, Snapshot
+from pants.core.util_rules.source_files import SourceFiles, SourceFilesRequest
+from pants.engine.fs import CreateDigest, Digest, FileContent, MergeDigests, RemovePrefix, Snapshot
 from pants.engine.rules import Get, MultiGet, collect_rules, rule
 from pants.engine.process import ProcessResult
 from pants.engine.target import (
@@ -29,7 +31,12 @@ from pants.engine.target import (
 from pants.engine.unions import UnionRule
 from pants.util.logging import LogLevel
 
-from experimental.pyoxidizer.target_types import PyOxidizerEntryPointField, PyOxidizerDependenciesField, PyOxidizerUnclassifiedResources
+from experimental.pyoxidizer.target_types import (
+    PyOxidizerConfigSourceField,
+    PyOxidizerEntryPointField,
+    PyOxidizerDependenciesField,
+    PyOxidizerUnclassifiedResources,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -37,10 +44,12 @@ logger = logging.getLogger(__name__)
 @dataclass(frozen=True)
 class PyOxidizerFieldSet(PackageFieldSet):
     required_fields = (PyOxidizerDependenciesField,)
-    
+
     entry_point: PyOxidizerEntryPointField
     dependencies: PyOxidizerDependenciesField
     unclassified_resources: PyOxidizerUnclassifiedResources
+    source: PyOxidizerConfigSourceField
+
     # output_path: OutputPathField # TODO: Remove until API is planned
 
 
@@ -67,9 +76,15 @@ async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPacka
 
     # TODO: Can this be walrus'd? Double for with repeated artifact.relpath is ugly
     wheel_relpaths = [
-        artifact.relpath for wheel in built_packages for artifact in wheel.artifacts if artifact.relpath is not None
+        artifact.relpath
+        for wheel in built_packages
+        for artifact in wheel.artifacts
+        if artifact.relpath is not None
     ]
     logger.info(f"This is the built package retrieved {built_packages}")
+
+    # Pulling this merged digests idea from the Docker plugin
+    built_package_digests = [built_package.digest for built_package in built_packages]
 
     # Pip install pyoxidizer
     pyoxidizer_pex_get = await Get(
@@ -82,18 +97,35 @@ async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPacka
             main=ConsoleScript("pyoxidizer"),
         ),
     )
-    
-    config_contents = generate_pyoxidizer_config(output_filename=field_set.address.target_name, field_set=field_set, wheel_relpaths=wheel_relpaths)
-    config = await Get(
-        Digest,
-        CreateDigest([FileContent("pyoxidizer.bzl", config_contents.encode("utf-8"))]),
-    )
-    logger.info(config_contents)
 
-    # Pulling this merged digests idea from the Docker plugin
-    digests = [built_package.digest for built_package in built_packages]
-    all_digests = (config, *digests)
+    
+
+    logger.info(field_set.source)
+    config_digest = None
+    if field_set.source is not None:
+        config_source = await Get(SourceFiles, SourceFilesRequest([field_set.source]))
+        config_file_prefix = str(Path(config_source.files[0]).parent)
+        config_digest = await Get(Digest, RemovePrefix(config_source.snapshot.digest, config_file_prefix))
+        snapshot = await Get(Snapshot, Digest, config_digest)
+        logger.info(snapshot)
+        
+    # raise RuntimeError()
+
+    # config_contents = generate_pyoxidizer_config(
+    #     output_filename=field_set.address.target_name,
+    #     field_set=field_set,
+    #     wheel_relpaths=wheel_relpaths,
+    # )
+    # config = await Get(
+    #     Digest,
+    #     CreateDigest([FileContent("pyoxidizer.bzl", config_contents.encode("utf-8"))]),
+    # )
+    # logger.info(config_contents)
+
+    all_digests = (config_digest, *built_package_digests)
     merged_digest = await Get(Digest, MergeDigests(d for d in all_digests if d))
+    merged_digest_snapshot = await Get(Snapshot, Digest, merged_digest)
+    logger.info(merged_digest_snapshot)
 
     result = await Get(
         ProcessResult,
@@ -120,13 +152,16 @@ def rules():
 
 
 # TODO: Can this be converted into a jinja template or similar sitting in the repo?
-def generate_pyoxidizer_config(output_filename: str, field_set: PyOxidizerFieldSet, wheel_relpaths: list[str]) -> str:
-    
+def generate_pyoxidizer_config(
+    output_filename: str, field_set: PyOxidizerFieldSet, wheel_relpaths: list[str]
+) -> str:
+
     # Conditionally add a config line for the entry point (defaults to REPL)
     entry_point = field_set.entry_point.value
-    run_module_config = f"python_config.run_module = '{entry_point}'" if entry_point is not None else ""
+    run_module_config = (
+        f"python_config.run_module = '{entry_point}'" if entry_point is not None else ""
+    )
 
-    
     # field_set.unclassified_resources.value
     # Add resources that need a specific location
     unclassified_resources = field_set.unclassified_resources.value
@@ -140,7 +175,6 @@ def generate_pyoxidizer_config(output_filename: str, field_set: PyOxidizerFieldS
         )
         # TODO: Okay, this is just getting ridiculous - definitely need a proper template
         download_to_fs_config = indent(download_to_fs_config, "        ")
-
 
     contents = f"""
     def make_exe():
