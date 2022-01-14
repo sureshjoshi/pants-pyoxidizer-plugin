@@ -12,7 +12,7 @@ def make_exe():
     python_config.run_module = "hellotemplate.main"
 
     exe = dist.to_python_executable(
-        name="hellotemplate",
+        name="$NAME",
         packaging_policy=policy,
         config=python_config,
     )
@@ -21,7 +21,7 @@ def make_exe():
     exe.add_python_resources(exe.pip_download(["fastapi", "pydantic", "uvicorn"]))
 
     # Template injection - programmatically include the generated wheels    
-    exe.add_python_resources(exe.pip_install(${wheels}))
+    exe.add_python_resources(exe.pip_install($WHEELS))
 
     return exe
 

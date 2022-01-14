@@ -18,7 +18,7 @@ from pants.engine.target import (
 class PyOxidizerEntryPointField(StringField):
     alias = "entry_point"
     default = None
-    help = "TODO1"
+    help = "TODO: No validation or error handling of entry_point value."
 
 
 class PyOxidizerDependenciesField(Dependencies):
@@ -37,6 +37,15 @@ class PyOxidizerConfigSourceField(SingleSourceField):
     default = None
     required = False
     expected_file_extensions = (".bzlt",)
+    expected_num_files = range(0, 2)
+    help = """Adds support for passing in a custom configuration and only injecting certain parameters from the Pants build process.
+    Path is relative to the BUILD file's directory.
+    Template requires a .bzlt extension. Parameters must be prefixed by $ or surrounded with ${ }
+    Template parameters: 
+        - ENTRY_POINT - The entry_point passed to this target (or None)
+        - NAME - This target's name
+        - WHEELS - All python distributions passed to this target (or [])
+    """
 
 
 # TODO: Output Path is useless right now, since PyOx builds elsewhere

@@ -107,44 +107,36 @@ async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPacka
         ),
     )
 
-    logger.info(field_set.template)
-    config_digest = None
-    if field_set.template is not None:
+    logger.info(field_set.template.value)
+    config_content = ""
+    if field_set.template.value is not None:
         config_template_source = await Get(
             SourceFiles, SourceFilesRequest([field_set.template])
         )
+        logger.info(config_template_source)
         digest_contents = await Get(
             DigestContents, Digest, config_template_source.snapshot.digest
         )
+        logger.info(digest_contents)
         config_template = digest_contents[0].content.decode("utf-8")
         config_content = hydrate_template(
-            Template(config_template), wheels=wheel_relpaths
+            Template(config_template),
+            name=field_set.address.target_name,
+            wheels=wheel_relpaths,
         )
-        logger.info(config_content)
-        config_digest = await Get(
-            Digest,
-            CreateDigest(
-                [FileContent("pyoxidizer.bzl", config_content.encode("utf-8"))]
-            ),
+    else:
+        logger.info("Creating template")
+        config_content = generate_pyoxidizer_config(
+            output_filename=field_set.address.target_name,
+            field_set=field_set,
+            wheel_relpaths=wheel_relpaths,
         )
-        # config_file_prefix = str(Path(config_source.files[0]).parent)
-        # config_digest = await Get(
-        #     Digest, RemovePrefix(config_source.snapshot.digest, config_file_prefix)
-        # )
-        # snapshot = await Get(Snapshot, Digest, config_digest)
 
-    # raise RuntimeError()
-
-    # config_contents = generate_pyoxidizer_config(
-    #     output_filename=field_set.address.target_name,
-    #     field_set=field_set,
-    #     wheel_relpaths=wheel_relpaths,
-    # )
-    # config = await Get(
-    #     Digest,
-    #     CreateDigest([FileContent("pyoxidizer.bzl", config_contents.encode("utf-8"))]),
-    # )
-    # logger.info(config_contents)
+    logger.info(config_content)
+    config_digest = await Get(
+        Digest,
+        CreateDigest([FileContent("pyoxidizer.bzl", config_content.encode("utf-8"))]),
+    )
 
     all_digests = (config_digest, *built_package_digests)
     merged_digest = await Get(Digest, MergeDigests(d for d in all_digests if d))
@@ -182,7 +174,6 @@ def generate_pyoxidizer_config(
         f"python_config.run_module = '{entry_point}'" if entry_point is not None else ""
     )
 
-    # field_set.unclassified_resources.value
     # Add resources that need a specific location
     unclassified_resources = field_set.unclassified_resources.value
     download_to_fs_config = ""
@@ -241,8 +232,8 @@ def generate_pyoxidizer_config(
     return dedent(contents)
 
 
-def hydrate_template(template: Template, wheels: list[str]) -> str:
-    return dedent(template.safe_substitute(wheels=wheels))
+def hydrate_template(template: Template, name: str, wheels: list[str]) -> str:
+    return dedent(template.safe_substitute(NAME=name, WHEELS=wheels))
 
 
 def rules():
