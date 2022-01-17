@@ -31,7 +31,7 @@ class PyOxidizerUnclassifiedResources(StringSequenceField):
         https://pyoxidizer.readthedocs.io/en/stable/pyoxidizer_packaging_additional_files.html#installing-unclassified-files-on-the-filesystem"""
 
 
-# TODO: I think this should be automatically picked up, like isort or black configs - just not sure how to access the source root from the oxy_clean target
+# TODO: I think this should be automatically picked up, like isort or black configs - just not sure how to access the source root from the pyoxidizer_binary target
 class PyOxidizerConfigSourceField(SingleSourceField):
     alias = "template"
     default = None
@@ -50,7 +50,7 @@ class PyOxidizerConfigSourceField(SingleSourceField):
 
 # TODO: Output Path is useless right now, since PyOx builds elsewhere
 class PyOxidizerTarget(Target):
-    alias = "oxy_clean"
+    alias = "pyoxidizer_binary"
     core_fields = (
         *COMMON_TARGET_FIELDS,
         PyOxidizerConfigSourceField,
@@ -59,4 +59,4 @@ class PyOxidizerTarget(Target):
         PyOxidizerUnclassifiedResources,
         # OutputPathField, # TODO: Remove until API is planned
     )
-    help = "The `oxy_clean` target describes how to build a single file executable."
+    help = "The `pyoxidizer_binary` target describes how to build a single file executable."

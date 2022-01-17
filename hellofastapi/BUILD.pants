@@ -18,7 +18,7 @@ python_distribution(
     ),
 )
 
-oxy_clean(
+pyoxidizer_binary(
     name="hellofastapi-bin",
     entry_point="hellofastapi.main",
     dependencies=[":hellofastapi-dist"],

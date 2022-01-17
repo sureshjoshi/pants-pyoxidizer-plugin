@@ -15,7 +15,7 @@ python_distribution(
     ),
 )
 
-oxy_clean(
+pyoxidizer_binary(
     name="hellokivy-bin",
     entry_point="hellokivy.main",
     dependencies=[":hellokivy-dist"],
