@@ -35,9 +35,9 @@ def rule_runner() -> RuleRunner:
     )
 
 
-def project_files() -> dict[str, str]:
+def project_files(add_config: bool = False) -> dict[str, str]:
     return {
-        "src/BUILD": dedent(
+        "BUILD": dedent(
             f"""\
             python_sources(
                 name="libtest"
@@ -48,25 +48,40 @@ def project_files() -> dict[str, str]:
                 wheel=True,
                 sdist=False,
                 provides=python_artifact(
-                    name="my-package",
+                    name="test-dist",
                     version="0.1.0",
               ),
             )
             pyoxidizer_binary(
                 name="test-bin",
-                entry_point="helloworld.main",
+                entry_point="hellotest.main",
                 dependencies=[":test-dist"],
             )
             """
         ),
-        "src/main.py": """print("hello test")""",
+        "hellotest/main.py": """print("hello test")""",
     }
 
 
-def test_something(rule_runner: RuleRunner):
+def test_packaging_without_config(rule_runner: RuleRunner):
     rule_runner.write_files(project_files())
-    tgt = rule_runner.get_target(Address("src", target_name="test-bin"))
+    tgt = rule_runner.get_target(Address("", target_name="test-bin"))
 
     field_set = PyOxidizerFieldSet.create(tgt)
+
+    # Without this, I get "Was not able to locate a Python interpreter to execute rule code"
+    rule_runner.set_options([], env_inherit={"PATH"})
     result = rule_runner.request(BuiltPackage, [field_set])
     print(result)
+
+
+# def test_packaging_with_config(rule_runner: RuleRunner):
+#     rule_runner.write_files(project_files(add_config=True))
+#     tgt = rule_runner.get_target(Address("", target_name="test-bin"))
+
+#     field_set = PyOxidizerFieldSet.create(tgt)
+
+#     # Without this, I get "Was not able to locate a Python interpreter to execute rule code"
+#     rule_runner.set_options([], env_inherit={"PATH"})
+#     result = rule_runner.request(BuiltPackage, [field_set])
+#     print(result)
