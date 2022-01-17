@@ -5,7 +5,7 @@ from pants.engine.rules import collect_rules
 
 class PyOxidizer(PythonToolBase):
     options_scope = "pyoxidizer"
-    help = "The PyOxidizer utility for packaging Python code in a Rust binary (https://pyoxidizer.readthedocs.io/en/stable/pyoxidizer.html)."
+    help = """The PyOxidizer utility for packaging Python code in a Rust binary (https://pyoxidizer.readthedocs.io/en/stable/pyoxidizer.html)."""
 
     default_version = "pyoxidizer==0.18.0"
     default_main = ConsoleScript("pyoxidizer")

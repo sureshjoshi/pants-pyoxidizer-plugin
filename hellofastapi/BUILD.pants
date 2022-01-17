@@ -1,5 +1,5 @@
 python_sources(
-    name="libhellofastapi", 
+    name="libhellofastapi",
     sources=["**/*.py"],
     dependencies=[
         "//:uvicorn",

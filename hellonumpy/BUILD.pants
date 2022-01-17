@@ -1,7 +1,4 @@
-python_sources(
-    name="libhellonumpy", 
-    sources=["**/*.py"]
-)
+python_sources(name="libhellonumpy", sources=["**/*.py"])
 
 python_distribution(
     name="hellonumpy-dist",
