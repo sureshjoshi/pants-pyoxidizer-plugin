@@ -1,11 +1,12 @@
 [GLOBAL]
-pants_version = "2.8.0"
+pants_version = "2.9.0"
 pantsd = true 
 build_patterns = ["BUILD.pants", "BUILD"]
 pythonpath = ["pants-plugins"]
 print_stacktrace = true
 
 backend_packages = [
+    "pants.backend.plugin_development",
     "pants.backend.python",
     "pants.backend.experimental.docker",
     "experimental.pyoxidizer",
@@ -23,3 +24,6 @@ requirement_constraints = "requirements.constraints.txt"
 
 [anonymous-telemetry]
 enabled = false
+
+[pyoxidizer]
+interpreter_constraints = [">=3.9"]

@@ -1,1 +1,1 @@
-pants_requirement(name="pants", dist="pantsbuild.pants")
+pants_requirements(name="pants")

@@ -1,7 +1,4 @@
-python_sources(
-    name="libhelloworld", 
-    sources=["**/*.py"]
-)
+python_sources(name="libhelloworld", sources=["**/*.py"])
 
 python_distribution(
     name="helloworld-dist",

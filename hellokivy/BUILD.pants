@@ -1,5 +1,5 @@
 python_sources(
-    name="libhellokivy", 
+    name="libhellokivy",
     sources=["**/*.py"],
 )
 

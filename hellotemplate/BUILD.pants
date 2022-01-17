@@ -1,5 +1,5 @@
 python_sources(
-    name="libhellotemplate", 
+    name="libhellotemplate",
     sources=["**/*.py"],
     dependencies=[
         "//:uvicorn",
