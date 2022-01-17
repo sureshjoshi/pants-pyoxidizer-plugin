@@ -1,13 +1,13 @@
 from pants.backend.python.target_types import PexEntryPointField
 from pants.core.goals.package import OutputPathField
 from pants.engine.target import (
+    COMMON_TARGET_FIELDS,
     Dependencies,
     Field,
     SingleSourceField,
     StringField,
     StringSequenceField,
     Target,
-    COMMON_TARGET_FIELDS,
 )
 
 # TODO: This runs into https://github.com/pantsbuild/pants/issues/13587

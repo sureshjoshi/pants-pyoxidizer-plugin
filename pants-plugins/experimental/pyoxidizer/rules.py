@@ -1,24 +1,21 @@
-from dataclasses import dataclass
-from pathlib import Path
 import logging
+from dataclasses import dataclass
 from string import Template
-from textwrap import indent, dedent
+from textwrap import dedent, indent
 
-from pants.backend.python.target_types import ConsoleScript
-from pants.backend.python.util_rules.interpreter_constraints import (
-    InterpreterConstraints,
+from experimental.pyoxidizer.subsystem import PyOxidizer
+from experimental.pyoxidizer.target_types import (
+    PyOxidizerConfigSourceField,
+    PyOxidizerDependenciesField,
+    PyOxidizerEntryPointField,
+    PyOxidizerUnclassifiedResources,
 )
 from pants.backend.python.util_rules.pex import (
     Pex,
     PexProcess,
     PexRequest,
-    PexRequirements,
 )
-from pants.core.goals.package import (
-    BuiltPackage,
-    BuiltPackageArtifact,
-    PackageFieldSet,
-)
+from pants.core.goals.package import BuiltPackage, BuiltPackageArtifact, PackageFieldSet
 from pants.core.util_rules.source_files import SourceFiles, SourceFilesRequest
 from pants.engine.fs import (
     CreateDigest,
@@ -26,11 +23,10 @@ from pants.engine.fs import (
     DigestContents,
     FileContent,
     MergeDigests,
-    RemovePrefix,
     Snapshot,
 )
-from pants.engine.rules import Get, MultiGet, collect_rules, rule
 from pants.engine.process import ProcessResult
+from pants.engine.rules import Get, MultiGet, collect_rules, rule
 from pants.engine.target import (
     DependenciesRequest,
     FieldSetsPerTarget,
@@ -39,14 +35,6 @@ from pants.engine.target import (
 )
 from pants.engine.unions import UnionRule
 from pants.util.logging import LogLevel
-
-from experimental.pyoxidizer.subsystem import PyOxidizer
-from experimental.pyoxidizer.target_types import (
-    PyOxidizerConfigSourceField,
-    PyOxidizerEntryPointField,
-    PyOxidizerDependenciesField,
-    PyOxidizerUnclassifiedResources,
-)
 
 logger = logging.getLogger(__name__)
 
