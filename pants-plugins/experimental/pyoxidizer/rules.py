@@ -40,6 +40,7 @@ from pants.engine.target import (
 from pants.engine.unions import UnionRule
 from pants.util.logging import LogLevel
 
+from experimental.pyoxidizer.subsystem import PyOxidizer
 from experimental.pyoxidizer.target_types import (
     PyOxidizerConfigSourceField,
     PyOxidizerEntryPointField,
@@ -63,7 +64,9 @@ class PyOxidizerFieldSet(PackageFieldSet):
 
 
 @rule(level=LogLevel.DEBUG)
-async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPackage:
+async def package_pyoxidizer_binary(
+    pyoxidizer: PyOxidizer, field_set: PyOxidizerFieldSet
+) -> BuiltPackage:
     logger.info(f"Incoming package_pyoxidizer_binary field set: {field_set}")
     targets = await Get(Targets, DependenciesRequest(field_set.dependencies))
     target = targets[0]
@@ -101,9 +104,9 @@ async def package_pyoxidizer_binary(field_set: PyOxidizerFieldSet) -> BuiltPacka
         PexRequest(
             output_filename="pyoxidizer.pex",
             internal_only=True,
-            requirements=PexRequirements(["pyoxidizer==0.18.0"]),
-            interpreter_constraints=InterpreterConstraints([">=3.9"]),
-            main=ConsoleScript("pyoxidizer"),
+            requirements=pyoxidizer.pex_requirements(),
+            interpreter_constraints=pyoxidizer.interpreter_constraints,
+            main=pyoxidizer.main,
         ),
     )
 
