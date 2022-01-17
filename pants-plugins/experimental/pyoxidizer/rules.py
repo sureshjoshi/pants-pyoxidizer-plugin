@@ -10,11 +10,7 @@ from experimental.pyoxidizer.target_types import (
     PyOxidizerEntryPointField,
     PyOxidizerUnclassifiedResources,
 )
-from pants.backend.python.util_rules.pex import (
-    Pex,
-    PexProcess,
-    PexRequest,
-)
+from pants.backend.python.util_rules.pex import Pex, PexProcess, PexRequest
 from pants.core.goals.package import BuiltPackage, BuiltPackageArtifact, PackageFieldSet
 from pants.core.util_rules.source_files import SourceFiles, SourceFilesRequest
 from pants.engine.fs import (
@@ -186,10 +182,10 @@ def generate_pyoxidizer_config(
         # Note: Adding this for pydanic and libs that have the "unable to load from memory" error
         # https://github.com/indygreg/PyOxidizer/issues/438
         policy.resources_location_fallback = "filesystem-relative:lib"
-        
+
         python_config = dist.make_python_interpreter_config()
         {run_module_config}
-        
+
         exe = dist.to_python_executable(
             name="{output_filename}",
             packaging_policy=policy,
