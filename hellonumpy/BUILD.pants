@@ -15,7 +15,7 @@ python_distribution(
     ),
 )
 
-oxy_clean(
+pyoxidizer_binary(
     name="hellonumpy-bin",
     entry_point="hellonumpy.main",
     dependencies=[":hellonumpy-dist"],
