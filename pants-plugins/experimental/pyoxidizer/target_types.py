@@ -17,7 +17,14 @@ from pants.engine.target import (
 class PyOxidizerEntryPointField(StringField):
     alias = "entry_point"
     default = None
-    help = "TODO: No validation or error handling of entry_point value."
+    help = dedent(
+        """Set the entry point, i.e. what gets run when executing `./my_app`, to a module.
+        This represents the content of PyOxidizer's `python_config.run_module` and leaving this
+        field empty will create a REPL binary.
+        It is specified with the full module declared: 'path.to.module'.
+        This field is passed into the PyOxidizer config as-is, and does not undergo validation checking.
+        """
+    )
 
 
 class PyOxidizerDependenciesField(Dependencies):
@@ -33,6 +40,7 @@ class PyOxidizerUnclassifiedResources(StringSequenceField):
 
 
 # TODO: I think this should be automatically picked up, like isort or black configs - just not sure how to access the source root from the pyoxidizer_binary target
+# In fact, should there even be a way to run this without a PyOxidizer config? The config can get complicated, so the default probably runs into many edge cases.
 class PyOxidizerConfigSourceField(SingleSourceField):
     alias = "template"
     default = None
@@ -45,9 +53,10 @@ class PyOxidizerConfigSourceField(SingleSourceField):
         Path is relative to the BUILD file's directory.
         Template requires a .bzlt extension. Parameters must be prefixed by $ or surrounded with ${ }
         Template parameters:
-            - ENTRY_POINT - The entry_point passed to this target (or None)
-            - NAME - This target's name
-            - WHEELS - All python distributions passed to this target (or [])
+            - ENTRY_POINT - The entry_point passed to this target (or None).
+            - NAME - This target's name.
+            - WHEELS - All python distributions passed to this target (or []).
+            - UNCLASSIFIED_RESOURCE_INSTALLATION - This will populate a snippet of code to correctly inject the targets filesystem_resources.
         """
     )
 
