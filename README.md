@@ -16,7 +16,7 @@ These are some typical workflows, which also highlight some unique circumstances
 1. ~~Hello World~~
 2. ~~FastAPI~~ -> Installing Classified Resources on the Filesystem
 3. ~~Numpy~~ -> Installing Unclassified Files on the Filesystem
-4. GUI
+4. ~~GUI~~ -> Works on MacOS with Kivy using the patch/workaround mentioned below
 
 ## Compilation Instructions
 
@@ -27,9 +27,9 @@ These are some typical workflows, which also highlight some unique circumstances
 
 ## Next Steps
 
-1. ~Take available PyOxidizer configuration or fallback to sane default~
-2. Save binary to flattened dist/
-3. Add debug and release build flags
+1. ~~Take available PyOxidizer configuration or fallback to sane default~~
+2. ~~Save binary to flattened dist/~~ -> Probably won't do until upstream
+3. ~~Add debug and release build flags~~ -> Added to pants.toml as args (applies for all targets, not individuals)
 
 ## Workarounds
 
