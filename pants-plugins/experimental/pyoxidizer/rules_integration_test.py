@@ -9,9 +9,10 @@ from pants.backend.python.target_types import (
     PythonDistribution,
     PythonSourcesGeneratorTarget,
 )
-from pants.backend.python.goals.publish import rules
+from pants.backend.python.goals.publish import PublishPythonPackageRequest, rules
 from pants.backend.python.util_rules import dists, pex_from_targets
 from pants.core.goals.package import BuiltPackage
+from pants.core.goals.publish import PublishPackages, PublishProcesses
 from pants.core.util_rules import source_files
 from pants.engine.addresses import Address
 from pants.testutil.rule_runner import QueryRule, RuleRunner
@@ -22,12 +23,14 @@ import pytest
 @pytest.fixture
 def rule_runner() -> RuleRunner:
     return RuleRunner(
+        preserve_tmpdirs=True,
         rules=[
             # *source_files.rules(),
             # *dists.rules(),
             *pyoxidizer_rules(),
             *subsystem_rules(),
             *pex_from_targets.rules(),
+            QueryRule(PublishProcesses, [PublishPythonPackageRequest]),
             QueryRule(BuiltPackage, [PyOxidizer, PyOxidizerFieldSet]),
         ],
         target_types=[
