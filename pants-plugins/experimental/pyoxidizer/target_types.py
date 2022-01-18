@@ -52,7 +52,6 @@ class PyOxidizerConfigSourceField(SingleSourceField):
     )
 
 
-# TODO: Output Path is useless right now, since PyOx builds elsewhere
 class PyOxidizerTarget(Target):
     alias = "pyoxidizer_binary"
     core_fields = (
@@ -61,6 +60,5 @@ class PyOxidizerTarget(Target):
         PyOxidizerDependenciesField,
         PyOxidizerEntryPointField,
         PyOxidizerUnclassifiedResources,
-        # OutputPathField, # TODO: Remove until API is planned
     )
     help = "The `pyoxidizer_binary` target describes how to build a single file executable."

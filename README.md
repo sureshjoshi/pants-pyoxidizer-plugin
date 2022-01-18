@@ -27,7 +27,7 @@ These are some typical workflows, which also highlight some unique circumstances
 
 ## Next Steps
 
-1. Take available PyOxidizer configuration or fallback to sane default
+1. ~Take available PyOxidizer configuration or fallback to sane default~
 2. Save binary to flattened dist/
 3. Add debug and release build flags
 
