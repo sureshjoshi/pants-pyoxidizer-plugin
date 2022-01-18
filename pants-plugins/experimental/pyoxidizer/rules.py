@@ -113,7 +113,7 @@ async def package_pyoxidizer_binary(
     )
     config_content = config.output()
 
-    logger.info(config_content)
+    logger.debug(config_content)
     config_digest = await Get(
         Digest,
         CreateDigest([FileContent("pyoxidizer.bzl", config_content.encode("utf-8"))]),
@@ -122,13 +122,13 @@ async def package_pyoxidizer_binary(
     all_digests = (config_digest, *built_package_digests)
     merged_digest = await Get(Digest, MergeDigests(d for d in all_digests if d))
     merged_digest_snapshot = await Get(Snapshot, Digest, merged_digest)
-    logger.info(merged_digest_snapshot)
+    logger.debug(merged_digest_snapshot)
 
     result = await Get(
         ProcessResult,
         PexProcess(
             pyoxidizer_pex_get,
-            argv=["build"],
+            argv=["build", *pyoxidizer.args],
             description="Running PyOxidizer build (...this can take a minute...)",
             input_digest=merged_digest,
             level=LogLevel.DEBUG,
