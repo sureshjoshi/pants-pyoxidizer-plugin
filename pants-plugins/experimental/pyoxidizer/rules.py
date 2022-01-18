@@ -52,7 +52,7 @@ async def package_pyoxidizer_binary(
     pyoxidizer: PyOxidizer, field_set: PyOxidizerFieldSet
 ) -> BuiltPackage:
     logger.info(f"Incoming package_pyoxidizer_binary field set: {field_set}")
-    targets = await Get(Targets, DependenciesRequest(field_set.dependencies))
+    targets = await Get(Targets, DependenciesRequest(field_set.dependencies)) 
     target = targets[0]
 
     logger.info(
@@ -69,6 +69,7 @@ async def package_pyoxidizer_binary(
         Get(BuiltPackage, PackageFieldSet, field_set)
         for field_set in packages.field_sets
     )
+    assert len(built_packages) >= 1, "There should be at least one wheel as a PyOxidizer dependency"
 
     # TODO: Can this be walrus'd? Double for with repeated artifact.relpath is ugly
     wheel_relpaths = [
