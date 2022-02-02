@@ -1,5 +1,12 @@
 # pants-pyoxidizer-plugin
 
+# NOTE: Future updates will occur in https://github.com/sureshjoshi/pants-plugins
+
+In lieu of having 1 repo per plugin, I'll be attempting to consolidate plugins into a single repo so that I'm not replicating all of my sample and configuration code.
+
+When that repo is a bit more stable, I will archive this one.
+
+
 Please note: This is my first time writing a Pants Plugin - so this should not be used as an example of the "right" way to do it, or even A way to do it. I'm flailing around and committing periodically - monkeys on a keyboard approach.
 
 ## Gameplan
