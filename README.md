@@ -1,11 +1,12 @@
+# NOTE 1: pants-pyoxidizer-plugin was accepted into the [Pants repo](https://github.com/pantsbuild/pants/pull/14183) as an experimental plugin on Feb 3, 2022
+
+So this repo is being archived. All future bug fixes will occur in the Pants repo.
+
+# NOTE 2: Additional Pants plugins are being prototyped at: https://github.com/sureshjoshi/pants-plugins
+
+Bug fixes, feature requests, or additional plugins may be requested there.
+
 # pants-pyoxidizer-plugin
-
-# NOTE: Future updates will occur in https://github.com/sureshjoshi/pants-plugins
-
-In lieu of having 1 repo per plugin, I'll be attempting to consolidate plugins into a single repo so that I'm not replicating all of my sample and configuration code.
-
-When that repo is a bit more stable, I will archive this one.
-
 
 Please note: This is my first time writing a Pants Plugin - so this should not be used as an example of the "right" way to do it, or even A way to do it. I'm flailing around and committing periodically - monkeys on a keyboard approach.
 
